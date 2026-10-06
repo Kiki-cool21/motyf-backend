@@ -11,17 +11,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const app = express();
 
 // Middleware
-app.use(cors({
-    origin: [
-        'http://localhost:5500',
-        'http://127.0.0.1:5500',
-        'http://localhost:3000',
-        /\.vercel\.app$/
-    ],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors());
 app.use(express.json());
 
 // =========================================
@@ -44,12 +34,13 @@ const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     kelas: { type: String, required: true },
     password: { type: String, required: true },
+    userType: { type: String, default: 'pelajar' },
     careerDirection: { type: String, default: null },
     careerDirectionAt: { type: Date, default: null },
     careerReasons: { type: [String], default: [] },
     careerReasonsAt: { type: Date, default: null },
     imkCode: { type: String, default: null },
-    imkDetail: {                                          // <-- BARU
+    imkDetail: {
         top1: String,
         top1_score: Number,
         top2: String,
@@ -60,7 +51,10 @@ const userSchema = new mongoose.Schema({
     imkCompletedAt: { type: Date, default: null },
     foundCareerFromExplore: { type: String, default: null },
     foundCareerFromExploreAt: { type: Date, default: null },
-    favourites: { type: [String], default: [] },        // ← INI MESTI ADA
+    favourites: { type: [String], default: [] },
+    feedbackRating: { type: Number, default: null },       // ← BARU
+    feedbackComment: { type: String, default: null },       // ← BARU
+    feedbackAt: { type: Date, default: null },              // ← BARU
     createdAt: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', userSchema);
@@ -70,22 +64,32 @@ const User = mongoose.model('User', userSchema);
 // =========================================
 app.post('/api/signup', async (req, res) => {
     try {
-        const { username, kelas, password } = req.body;
+        const { username, kelas, password, userType } = req.body;
         
-        const existingUser = await User.findOne({ username });
-        if (existingUser) {
+        // Semak username dah wujud
+        const existing = await User.findOne({ username });
+        if (existing) {
             return res.status(400).json({ message: "Username sudah digunakan." });
         }
 
+        // Hash password
         const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        const newUser = new User({ username, kelas, password: hashedPassword });
+        const hashed = await bcrypt.hash(password, salt);
+        
+        // Simpan user baru
+        const newUser = new User({ 
+            username, 
+            kelas, 
+            password: hashed,
+            userType: userType || 'pelajar'
+        });
+        
         await newUser.save();
         
         res.status(201).json({ message: "Akaun berjaya dicipta!" });
-    } catch (error) {
-        console.error(error);
+        
+    } catch (err) {
+        console.error(err);
         res.status(500).json({ message: "Ralat server. Sila cuba lagi." });
     }
 });
@@ -93,24 +97,29 @@ app.post('/api/signup', async (req, res) => {
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-
         const user = await User.findOne({ username });
-        if (!user) {
-            return res.status(400).json({ message: "Akaun tidak dijumpai." });
-        }
+        if (!user) return res.status(400).json({ message: "Akaun tidak dijumpai." });
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ message: "Password tidak betul." });
-        }
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) return res.status(400).json({ message: "Password tidak betul." });
 
-        res.status(200).json({ 
-            message: "Login berjaya!", 
-            user: { username: user.username, kelas: user.kelas } 
+        res.status(200).json({
+            message: "Login berjaya!",
+            user: {
+                username: user.username,
+                kelas: user.kelas,
+                userType: user.userType,        // ← TAMBAH INI
+                careerDirection: user.careerDirection,
+                careerReasons: user.careerReasons,
+                imkCode: user.imkCode,
+                imkDetail: user.imkDetail,
+                foundCareerFromExplore: user.foundCareerFromExplore,
+                favourites: user.favourites
+            }
         });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Ralat server. Sila cuba lagi." });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Ralat server." });
     }
 });
 
@@ -233,7 +242,7 @@ app.post('/api/update-profile', async (req, res) => {
         }
 
         // Update kelas (kalau ada)
-        if (kelas && kelas.trim()) {
+        if (u && kelas.trim()) {
             user.kelas = kelas.trim();
         }
 
@@ -621,6 +630,86 @@ app.post('/api/favourites/toggle', async (req, res) => {
         res.status(500).json({ message: "Ralat server." });
     }
 });
+// =========================================
+// API: SIMPAN FEEDBACK (Pengguna Luar)
+// =========================================
+app.post('/api/feedback', async (req, res) => {
+    try {
+        const { username, rating, comment } = req.body;
+
+        if (!username || !rating) {
+            return res.status(400).json({ message: "Rating diperlukan." });
+        }
+
+        if (rating < 1 || rating > 5) {
+            return res.status(400).json({ message: "Rating mesti antara 1-5." });
+        }
+
+        const user = await User.findOneAndUpdate(
+            { username },
+            { 
+                feedbackRating: rating,
+                feedbackComment: comment || null,
+                feedbackAt: new Date()
+            },
+            { new: true }
+        );
+
+        if (!user) {
+            return res.status(404).json({ message: "Akaun tidak dijumpai." });
+        }
+
+        res.status(200).json({ 
+            message: "Maklum balas berjaya dihantar!",
+            rating: user.feedbackRating
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Ralat server." });
+    }
+});
+
+// =========================================
+// API: SIMPAN FEEDBACK (Pengguna Luar)
+// =========================================
+app.post('/api/feedback', async (req, res) => {
+    try {
+        const { username, rating, comment } = req.body;
+
+        if (!username || !rating) {
+            return res.status(400).json({ message: "Rating diperlukan." });
+        }
+
+        if (rating < 1 || rating > 5) {
+            return res.status(400).json({ message: "Rating mesti antara 1-5." });
+        }
+
+        const user = await User.findOneAndUpdate(
+            { username },
+            { 
+                feedbackRating: rating,
+                feedbackComment: comment || null,
+                feedbackAt: new Date()
+            },
+            { new: true }
+        );
+
+        if (!user) {
+            return res.status(404).json({ message: "Akaun tidak dijumpai." });
+        }
+
+        res.status(200).json({ 
+            message: "Maklum balas berjaya dihantar!",
+            rating: user.feedbackRating
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Ralat server." });
+    }
+});
+
 
 
 
