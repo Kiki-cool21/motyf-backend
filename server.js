@@ -283,26 +283,23 @@ app.post('/api/admin/login', (req, res) => {
     }
 });
 
-// =========================================
-// API: ADMIN STATISTICS
-// =========================================
 app.get('/api/admin/stats', async (req, res) => {
     try {
         const users = await User.find({ isAdmin: { $ne: true } });
         const total = users.length;
         
-        // ===== CAREER QUESTION (AWAL) =====
         const careerYa = users.filter(u => u.careerDirection === 'YA').length;
         const careerTidak = users.filter(u => u.careerDirection === 'TIDAK').length;
-
-        // ===== EXPLORE QUESTION (AKHIR) =====
         const exploreYa = users.filter(u => u.foundCareerFromExplore === 'YA').length;
         const exploreTidak = users.filter(u => u.foundCareerFromExplore === 'TIDAK').length;
-
-        // ===== IMK =====
         const imkCompleted = users.filter(u => u.imkCode).length;
 
-        // ===== HOLLAND CODE =====
+        // Feedback stats (Pengguna Luar)
+        const feedbackUsers = users.filter(u => u.feedbackRating);
+        const avgRating = feedbackUsers.length > 0 
+            ? (feedbackUsers.reduce((sum, u) => sum + u.feedbackRating, 0) / feedbackUsers.length).toFixed(1)
+            : 0;
+
         const hollandCount = {};
         users.forEach(u => {
             if (u.imkCode && u.imkCode.length > 0) {
@@ -311,7 +308,6 @@ app.get('/api/admin/stats', async (req, res) => {
             }
         });
 
-        // ===== REASONS =====
         const reasonCount = {};
         users.forEach(u => {
             if (u.careerReasons && u.careerReasons.length > 0) {
@@ -323,22 +319,20 @@ app.get('/api/admin/stats', async (req, res) => {
 
         res.status(200).json({
             total,
-            // Career Question (UNTUK CARTA 1)
             careerYa,
             careerTidak,
             careerYaPercent: total > 0 ? Math.round((careerYa / total) * 100) : 0,
             careerTidakPercent: total > 0 ? Math.round((careerTidak / total) * 100) : 0,
-            // Explore Question (UNTUK CARTA 2)
             exploreYa,
             exploreTidak,
             exploreYaPercent: total > 0 ? Math.round((exploreYa / total) * 100) : 0,
             exploreTidakPercent: total > 0 ? Math.round((exploreTidak / total) * 100) : 0,
-            // Lain-lain
             imkCompleted,
+            feedbackCount: feedbackUsers.length,           // ← BARU
+            avgRating: parseFloat(avgRating),              // ← BARU
             hollandCount,
             reasonCount
         });
-
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Ralat server." });
@@ -346,13 +340,10 @@ app.get('/api/admin/stats', async (req, res) => {
 });
 
 
-// =========================================
-// API: ADMIN — SENARAI PELAJAR
-// =========================================
 app.get('/api/admin/students', async (req, res) => {
     try {
         const users = await User.find({ isAdmin: { $ne: true } })
-            .select('username kelas careerDirection imkCode foundCareerFromExplore createdAt')
+            .select('username kelas userType careerDirection imkCode foundCareerFromExplore feedbackRating feedbackComment feedbackAt createdAt')
             .sort({ createdAt: -1 });
         res.status(200).json(users);
     } catch (error) {
