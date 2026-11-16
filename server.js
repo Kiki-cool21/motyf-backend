@@ -702,7 +702,16 @@ app.post('/api/feedback', async (req, res) => {
 });
 
 
+// =========================================
+// LALUAN UNTUK UPTIMEROBOT & SEMAKAN
+// =========================================
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', message: 'Server is healthy' });
+});
 
+app.get('/', (req, res) => {
+    res.send('MoTYF+ Backend sedang berjalan dengan baik 🚀');
+});
 
 // =========================================
 // JALANKAN SERVER
