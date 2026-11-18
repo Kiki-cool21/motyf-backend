@@ -735,22 +735,25 @@ app.post('/api/generate-path', async (req, res) => {
     4. Persiapan Universiti & Industri`;
 
     try {
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'llama-3.1-8b-instant',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                temperature: 0.6,
-                max_tokens: 1500
-            })
-        });
+// DALAM /api/generate-path
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: 'openai/gpt-oss-20b',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+            ],
+            temperature: 0.6,
+            max_tokens: 800, // <--- TURUNKAN DARI 1500 KEPADA 800
+            reasoning_effort: 'low' // <--- TAMBAH INI
+        })
+    });
 
         const data = await response.json();
         res.json(data); // Hantar balik ke frontend
@@ -760,6 +763,7 @@ app.post('/api/generate-path', async (req, res) => {
         res.status(500).json({ error: "Gagal berhubung dengan AI." });
     }
 });
+console.log('Groq Key prefix:', process.env.GROQ_PLAN ? process.env.GROQ_PLAN.slice(0, 4) : 'TIDAK DITEMUI');
 
 
 // =========================================
