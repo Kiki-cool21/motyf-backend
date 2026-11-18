@@ -712,6 +712,55 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
     res.send('MoTYF+ Backend sedang berjalan dengan baik 🚀');
 });
+// ============================================================
+// ROUTE UNTUK AI GROQ (BACKEND PROXY)
+// ============================================================
+app.post('/api/generate-path', async (req, res) => {
+    const { careerName, userRiasec } = req.body;
+    
+    // Ambil API Key dari fail .env
+    const apiKey = process.env.GROQ_PLAN; 
+
+    if (!apiKey) {
+        return res.status(500).json({ error: "Kunci API Groq tiada dalam .env server." });
+    }
+
+    const systemPrompt = `Anda adalah pakar bimbingan kerjaya Malaysia yang profesional dan berpengalaman. Jawab dalam Bahasa Melayu yang jelas, ringkas, dan berstruktur.`;
+
+    const userPrompt = `Sila hasilkan pelan pembelajaran strategik (Learning Path) untuk kerjaya: **${careerName}**. Kod RIASEC pengguna ialah **${userRiasec}**. 
+    Sila bahagikan output kepada 4 Fasa: 
+    1. Fokus Subjek & Akademik (SPM)
+    2. Kokurikulum & Kemahiran
+    3. Hala Tuju Selepas SPM
+    4. Persiapan Universiti & Industri`;
+
+    try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'llama-3.1-8b-instant',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                temperature: 0.6,
+                max_tokens: 1500
+            })
+        });
+
+        const data = await response.json();
+        res.json(data); // Hantar balik ke frontend
+        
+    } catch (error) {
+        console.error("Ralat Groq:", error);
+        res.status(500).json({ error: "Gagal berhubung dengan AI." });
+    }
+});
+
 
 // =========================================
 // JALANKAN SERVER
