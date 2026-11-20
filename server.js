@@ -508,14 +508,14 @@ app.post('/api/explore-question', async (req, res) => {
             return res.status(400).json({ message: "Data tak lengkap." });
         }
 
-        if (!['YA', 'TIDAK'].includes(answer)) {
+        if (!['YA', 'TIDAK'].includes(foundCareerFromExplore)) {
             return res.status(400).json({ message: "Jawapan tidak sah." });
         }
 
         const user = await User.findOneAndUpdate(
             { username },
             { 
-                foundCareerFromExplore: answer,
+                foundCareerFromExplore: foundCareerFromExplore,
                 foundCareerFromExploreAt: new Date()
             },
             { new: true }
