@@ -499,9 +499,12 @@ PANDUAN JAWAPAN:
 // =========================================
 app.post('/api/explore-question', async (req, res) => {
     try {
-        const { username, answer } = req.body;
+        // Ambil kedua-dua nama yang mungkin dihantar oleh frontend
+        const username = req.body.username;
+        const foundCareerFromExplore = req.body.foundCareerFromExplore || req.body.answer;
 
-        if (!username || !answer) {
+        // Semak jika salah satu tiada
+        if (!username || !foundCareerFromExplore) {
             return res.status(400).json({ message: "Data tak lengkap." });
         }
 
@@ -717,8 +720,6 @@ app.get('/', (req, res) => {
 // ============================================================
 app.post('/api/generate-path', async (req, res) => {
     const { careerName, userRiasec } = req.body;
-    
-    // Ambil API Key dari fail .env
     const apiKey = process.env.GROQ_PLAN; 
 
     if (!apiKey) {
@@ -735,36 +736,34 @@ app.post('/api/generate-path', async (req, res) => {
     4. Persiapan Universiti & Industri`;
 
     try {
-// DALAM /api/generate-path
-
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            model: 'openai/gpt-oss-20b',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ],
-            temperature: 0.6,
-            max_tokens: 800, // <--- TURUNKAN DARI 1500 KEPADA 800
-            reasoning_effort: 'low' // <--- TAMBAH INI
-        })
-    });
+        console.log(`⏳ Mula panggil Groq API untuk: ${careerName}...`);
+        
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'openai/gpt-oss-20b',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                temperature: 0.6,
+                max_tokens: 800,
+                reasoning_effort: 'low'
+            })
+        });
 
         const data = await response.json();
-        res.json(data); // Hantar balik ke frontend
+        res.json(data); 
         
     } catch (error) {
-        console.error("Ralat Groq:", error);
+        console.error("❌ Ralat Groq:", error);
         res.status(500).json({ error: "Gagal berhubung dengan AI." });
     }
 });
-console.log('Groq Key prefix:', process.env.GROQ_PLAN ? process.env.GROQ_PLAN.slice(0, 4) : 'TIDAK DITEMUI');
-
 
 // =========================================
 // JALANKAN SERVER
