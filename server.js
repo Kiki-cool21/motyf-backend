@@ -728,13 +728,40 @@ app.post('/api/generate-path', async (req, res) => {
 
     const systemPrompt = `Anda adalah pakar bimbingan kerjaya Malaysia yang profesional dan berpengalaman. Jawab dalam Bahasa Melayu yang jelas, ringkas, dan berstruktur.`;
 
-    const userPrompt = `Sila hasilkan pelan pembelajaran strategik (Learning Path) untuk kerjaya: **${careerName}**. Kod RIASEC pengguna ialah **${userRiasec}**. 
-    Sila bahagikan output kepada 4 Fasa: 
-    1. Fokus Subjek & Akademik (SPM)
-    2. Kokurikulum & Kemahiran
-    3. Hala Tuju Selepas SPM
-    4. Persiapan Universiti & Industri`;
+    const userPrompt = `Sila hasilkan pelan pembelajaran strategik (Learning Path) untuk kerjaya: **${careerName}**. 
+    Kod RIASEC pengguna ialah **${userRiasec}**. 
+    *Nota Penting: Dalam sistem kami, K = Konvensional, R = Realistik, S = Sosial, I = Investigatif, A = Artistik, E = Enterprising.*
 
+    Sila hasilkan output dalam format JSON yang sah (strict JSON) TANPA sebarang teks tambahan atau blok markdown (jangan guna \`\`\`json). 
+    Gunakan struktur berikut:
+    {
+      "phases": [
+        {
+          "id": "phase1",
+          "title": "Fasa 1: Subjek SPM",
+          "objective": "Fokus pada subjek Sains dan Matematik...",
+          "checklist": ["Ambil subjek Matematik Tambahan", "Fokus pada Fizik", "Lulus SPM dengan cemerlang"]
+        },
+        {
+          "id": "phase2",
+          "title": "Fasa 2: Kokurikulum",
+          "objective": "Sertai kelab pengaturcaraan...",
+          "checklist": ["Sertai Kelab Komputer", "Bina projek kecil", "Sertai hackathon"]
+        },
+        {
+          "id": "phase3",
+          "title": "Fasa 3: Hala Tuju",
+          "objective": "Pilih laluan selepas SPM...",
+          "checklist": ["Semak syarat kemasukan universiti", "Mohon biasiswa", "Hadiri pameran pendidikan"]
+        },
+        {
+          "id": "phase4",
+          "title": "Fasa 4: Universiti",
+          "objective": "Persiapan ke menara gading...",
+          "checklist": ["Daftar kursus", "Sertai orientasi", "Cari mentor"]
+        }
+      ]
+    }`;
     try {
         console.log(`⏳ Mula panggil Groq API untuk: ${careerName}...`);
         
