@@ -761,7 +761,7 @@ app.post('/api/generate-path', async (req, res) => {
           "checklist": ["Daftar kursus", "Sertai orientasi", "Cari mentor"]
         }
       ]
-    }`;
+        **ARAHAN PENTING:** Pastikan JSON ditutup dengan sempurna (tutup semua kurungan { } dan petikan "). Jangan tinggalkan ayat tergantung.`;
     try {
         console.log(`⏳ Mula panggil Groq API untuk: ${careerName}...`);
         
@@ -778,7 +778,7 @@ app.post('/api/generate-path', async (req, res) => {
                     { role: 'user', content: userPrompt }
                 ],
                 temperature: 0.6,
-                max_tokens: 800,
+                max_tokens: 1500,
                 reasoning_effort: 'low'
             })
         });
